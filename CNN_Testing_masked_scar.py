@@ -30,15 +30,16 @@ from skimage.util import view_as_blocks
 
 patch_size = 8
 window_size = 32
-nclasses = 3
+nclasses = 2
 epocs = 2
-skip = 10
+skip = 20
 patchsize_sq = np.square(patch_size)
 windowsize_sq = np.square(window_size)
 numpy.random.seed(windowsize_sq-1)
-test_slice = range(30,33)
+#test_slice = range(30,33)
 modelname=('CNN_scar_1.h5')
-train_slice = range(0,0)
+#train_slice = range(0,0)
+
 visualize=1
 pid_test = ('0485', '0632')#, '0715', '0730', '0917', '0921', '0953', '1036', '1073', '1076', '1115', '1166', '1168', '1171')
 

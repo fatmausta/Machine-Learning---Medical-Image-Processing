@@ -39,7 +39,7 @@ import random
 patch_size = 8
 window_size = 32
 nclasses = 2
-epochs = 20
+epochs = 50
 
 filter_size = 2
 datapopfraction = 0.80
@@ -48,8 +48,8 @@ modelname= 'CNN_scar_1.h5'
 #sl = 30
 #datapath = 'DataCNNScarNorm/' #for sharcnet work directory
 datapath = 'C:\\Users\\fusta\\Dropbox\\1_Machine_Learning\\DataCNNScarNorm\\'
-skip=4
-pid_train = np.array(['0329','0364'])#,'0417', '0424', '0450', '0473', '0493', '0494', '0495', '0515', '0519', '0529', '0546', '0562', '0565', '0574', '0578', '0587', '0591', '0601'])#, '0632', '0715', '0730', '0917', '0921', '0953', '1036', '1073', '1076', '1115', '1166', '1168', '1171', '1179'])
+skip=10
+pid_train = np.array(['0329'])#,'0364'])#,'0417', '0424', '0450', '0473', '0493', '0494', '0495', '0515', '0519', '0529', '0546', '0562', '0565', '0574', '0578', '0587', '0591', '0601'])#, '0632', '0715', '0730', '0917', '0921', '0953', '1036', '1073', '1076', '1115', '1166', '1168', '1171', '1179'])
 pid_test = np.array([('0485')])#for pid in pids:
 
 patchsize_sq = np.square(patch_size)
