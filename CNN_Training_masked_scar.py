@@ -35,11 +35,10 @@ K.set_image_dim_ordering('th')
 from skimage.util import view_as_windows
 from skimage.util import view_as_blocks
 import random
-
 patch_size = 8
 window_size = 32
 nclasses = 2
-epochs = 50
+
 
 filter_size = 2
 datapopfraction = 0.80
@@ -48,22 +47,21 @@ modelname= 'CNN_scar_1.h5'
 #sl = 30
 #datapath = 'DataCNNScarNorm/' #for sharcnet work directory
 datapath = 'C:\\Users\\fusta\\Dropbox\\1_Machine_Learning\\DataCNNScarNorm\\'
-skip=10
-pid_train = np.array(['0329'])#,'0364'])#,'0417', '0424', '0450', '0473', '0493', '0494', '0495', '0515', '0519', '0529', '0546', '0562', '0565', '0574', '0578', '0587', '0591', '0601'])#, '0632', '0715', '0730', '0917', '0921', '0953', '1036', '1073', '1076', '1115', '1166', '1168', '1171', '1179'])
-pid_test = np.array([('0485')])#for pid in pids:
+#TRAINING
+epochs = 50
+skip = 4
+pid_train = np.array(['0329'])#,'0364','0417', '0424', '0450', '0473', '0485','0493', '0494', '0495', '0515', '0519', '0529', '0546', '0562', '0565', '0574', '0578', '0587', '0591'])
 
 patchsize_sq = np.square(patch_size)
 windowsize_sq = np.square(window_size)
 numpy.random.seed(windowsize_sq-1)
 test_slice = range(30,31)#15-45
 
-def PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slice, datapath, skip):  
-    pid_all = np.concatenate((pid_train, pid_test))
+def PatchMaker(patch_size, window_size, nclasses, pid_train, test_slice, datapath, skip):  
     patch_labels_training=[]
     patch_labels_testing=[]    
     window_intensities_training=[]
     window_intensities_testing=[]
-    test_img_shape = []#np.empty((len(pid_test),2))
     pads=[]
     LGE_padded_slice = np.empty(())
             #make windows size and patch size evenly dvideble 
@@ -147,14 +145,11 @@ def PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slic
             else:
                 print('sl>=d_LGE %d >= %d' % (sl,d_LGE))
                 break
-        if pid in pid_test:
-            print(pid)
-            test_img_shape.append(LGE_padded_slice.shape)        #Now, intensities=windows and patches labels will be comboined
 
         training_data= list(zip(numpy.uint8(window_intensities_training),numpy.uint8(patch_labels_training)))
         testing_data= list(zip(numpy.uint8(window_intensities_testing),numpy.uint8(patch_labels_testing)))  
         
-    return training_data, testing_data, test_img_shape, pads, pid_all
+    return training_data, testing_data, pads
     numpy.savetxt('training.csv', training_data ,fmt='%s', delimiter=',' ,newline='\r\n') 
     numpy.savetxt('testing.csv', testing_data ,fmt='%s', delimiter=',' ,newline='\r\n') 
     print(nonzero)      
@@ -170,7 +165,8 @@ def DiceIndex(BW1, BW2):
     DI=DI*100
     return DI
 
-def runCNNModel(dataset_training, dataset_testing, test_img_shape, pads, epochs, patch_size, window_size, nclasses, pid_test, datapath):
+def runCNNModel(dataset_training, dataset_testing, pads, epochs, patch_size, window_size, nclasses, datapath):
+
     print('\nsample size: %d' % len(dataset_training))
     #count the samp;les with scar in it
     # preprocessing
@@ -236,8 +232,8 @@ def runCNNModel(dataset_training, dataset_testing, test_img_shape, pads, epochs,
     return y_pred_scaled_cropped
 
 #to do a rough segmentation, save the ,model
-(dataset_training, dataset_testing, test_img_shape, pads, pid_all) = PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slice, datapath, skip)
-y_pred_scaled_cropped = runCNNModel(dataset_training, dataset_testing, test_img_shape, pads, epochs, patch_size, window_size, nclasses, pid_test, datapath)
+(dataset_training, dataset_testing, pads) = PatchMaker(patch_size, window_size, nclasses, pid_train, test_slice, datapath, skip)
+y_pred_scaled_cropped = runCNNModel(dataset_training, dataset_testing, pads, epochs, patch_size, window_size, nclasses, datapath)
 #to do a finer segmentation, save the mpodel
 patch_size = 2
 window_size = 16
@@ -245,5 +241,5 @@ patchsize_sq = np.square(patch_size)
 windowsize_sq = np.square(window_size)
 numpy.random.seed(windowsize_sq-1)
 modelname= 'CNN_scar_2.h5'
-(dataset_training, dataset_testing, test_img_shape, pads, pid_all) = PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slice, datapath, skip)
-y_pred_scaled_cropped = runCNNModel(dataset_training, dataset_testing, test_img_shape, pads, epochs, patch_size, window_size, nclasses, pid_test, datapath)
+(dataset_training, dataset_testing, pads) = PatchMaker(patch_size, window_size, nclasses, pid_train, test_slice, datapath, skip)
+y_pred_scaled_cropped = runCNNModel(dataset_training, dataset_testing, pads, epochs, patch_size, window_size, nclasses, datapath)

@@ -31,21 +31,19 @@ from skimage.util import view_as_blocks
 patch_size = 8
 window_size = 32
 nclasses = 2
-epocs = 2
-skip = 20
+
 patchsize_sq = np.square(patch_size)
 windowsize_sq = np.square(window_size)
 numpy.random.seed(windowsize_sq-1)
-#test_slice = range(30,33)
 modelname=('CNN_scar_1.h5')
-#train_slice = range(0,0)
-
+#TESTING
+skip = 20
 visualize=1
-pid_test = ('0485', '0632')#, '0715', '0730', '0917', '0921', '0953', '1036', '1073', '1076', '1115', '1166', '1168', '1171')
+pid_test = (['0601'])#, '0632', '0715', '0730', '0917', '0921', '0953', '1036', '1073', '1076', '1115', '1166', '1168', '1171')
 
 #datapath = 'DataCNNScarNorm/'
 datapath = 'C:\\Users\\fusta\\Dropbox\\1_Machine_Learning\\DataCNNScar\\'
-def runCNNModel(dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, epocs, patch_size, window_size, nclasses, pid, test_slice):
+def runCNNModel(dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, patch_size, window_size, nclasses, pid, test_slice):
     # preprocessing
     X_training = np.zeros((len(dataset_training),windowsize_sq))
     Y_training = np.zeros((len(dataset_training),1))
@@ -194,7 +192,7 @@ for pid in pid_test:
     mask_3D = SimpleITK.GetArrayFromImage(mask) 
     
     (dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, test_slice) = PatchMaker(mask_3D, patch_size, window_size, nclasses, pid, datapath)
-    (y_pred_scaled_cropped, y_testing_multi) = runCNNModel(dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, epocs, patch_size, window_size, nclasses, pid,test_slice)
+    (y_pred_scaled_cropped, y_testing_multi) = runCNNModel(dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, patch_size, window_size, nclasses, pid,test_slice)
     #fine segmentation
     modelname=('CNN_scar_2.h5')
     patch_size = 2
@@ -203,7 +201,7 @@ for pid in pid_test:
     windowsize_sq = np.square(window_size)
     mask3D = y_pred_scaled_cropped    
     (dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, test_slice) = PatchMaker(mask_3D, patch_size, window_size, nclasses, pid, datapath)
-    (y_pred_scaled_cropped, y_testing_multi) = runCNNModel(dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, epocs, patch_size, window_size, nclasses, pid,test_slice)
+    (y_pred_scaled_cropped, y_testing_multi) = runCNNModel(dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, patch_size, window_size, nclasses, pid,test_slice)
 
     scarGT = SimpleITK.ReadImage(datapath + pid + '//' + pid + '-scar-cropped.mhd')
     scar3D = sitk.GetArrayFromImage(scarGT)
