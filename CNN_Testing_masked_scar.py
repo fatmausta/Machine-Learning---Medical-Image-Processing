@@ -28,18 +28,19 @@ K.set_image_dim_ordering('th')
 from skimage.util import view_as_windows
 from skimage.util import view_as_blocks
 
-patch_size = 2
-window_size = 30
+patch_size = 8
+window_size = 32
 nclasses = 3
 epocs = 2
+skip = 10
 patchsize_sq = np.square(patch_size)
 windowsize_sq = np.square(window_size)
 numpy.random.seed(windowsize_sq-1)
 test_slice = range(30,33)
-modelname='ModelMyoCNN1_aug.h5'
+modelname=('CNN_scar_1.h5')
 train_slice = range(0,0)
-visualize=0
-pid_test = ('0485', '0632', '0715', '0730', '0917', '0921', '0953', '1036', '1073', '1076', '1115', '1166', '1168', '1171')
+visualize=1
+pid_test = ('0485', '0632')#, '0715', '0730', '0917', '0921', '0953', '1036', '1073', '1076', '1115', '1166', '1168', '1171')
 
 #datapath = 'DataCNNScarNorm/'
 datapath = 'C:\\Users\\fusta\\Dropbox\\1_Machine_Learning\\DataCNNScar\\'
@@ -70,7 +71,7 @@ def runCNNModel(dataset_training, dataset_testing, test_img_shape, test_img_shap
     Y_testing = np_utils.to_categorical(Y_testing, nclasses)
     model = keras.models.load_model(modelname)
     #predict classes
-    y_pred = model.predict_classes(X_testing)    
+    y_pred = model.predict_classes(X_testing, verbose = 2)    
     y_pred = y_pred.astype('float32')
     
     y_pred = np_utils.to_categorical(y_pred, nclasses)
@@ -95,7 +96,7 @@ def runCNNModel(dataset_training, dataset_testing, test_img_shape, test_img_shap
     y_pred_scaled_cropped = np.array(y_pred_scaled_cropped)
 
     if visualize == 1:
-        for s in range(0, 77):
+        for s in range(0, np.int(test_img_shape[0][0]/skip)):
             plt.figure()
             plt.imshow(y_pred_scaled_cropped[s]) 
             plt.figure()
@@ -106,7 +107,7 @@ def runCNNModel(dataset_training, dataset_testing, test_img_shape, test_img_shap
  
     return y_pred_scaled_cropped, y_testing_multi 
 
-def PatchMaker(patch_size, window_size, nclasses, pid, datapath):  
+def PatchMaker(mask3D, patch_size, window_size, nclasses, pid, datapath):  
      
     patch_labels_training=[]
     patch_labels_testing=[]    
@@ -118,19 +119,19 @@ def PatchMaker(patch_size, window_size, nclasses, pid, datapath):
     
     LGE = SimpleITK.ReadImage(datapath + pid + '//' + pid + '-LGE-cropped.mhd')
     scar = SimpleITK.ReadImage(datapath + pid + '//' + pid + '-scar-cropped.mhd')
-    myo = SimpleITK.ReadImage(datapath + pid + '//' + pid + '-myo-cropped.mhd')
+#    mask = SimpleITK.ReadImage(datapath + pid + '//' + pid + '-myo-cropped.mhd')
     
     #convert a SimpleITK object into an array
     LGE_3D = SimpleITK.GetArrayFromImage(LGE)
     scar_3D = SimpleITK.GetArrayFromImage(scar) 
-    myo_3D = SimpleITK.GetArrayFromImage(myo) 
+#    mask_3D = SimpleITK.GetArrayFromImage(myomask 
    #masking LGE with GT myo
-    LGE_3D = np.multiply(LGE_3D,myo_3D)
+    LGE_3D = np.multiply(LGE_3D,mask_3D)
 
     h_LGE = LGE_3D.shape[1]
     w_LGE = LGE_3D.shape[2] 
     d_LGE = LGE_3D.shape[0]
-    test_slice = range(0,d_LGE)
+    test_slice = range(0,d_LGE,skip)
 
     #make windows size and patch size evenly dvideble 
     if (window_size-patch_size)%2 != 0:
@@ -187,17 +188,32 @@ def DiceIndex(BW1, BW2):
 Dice_list = []
 ##MAIN SECTION    
 for pid in pid_test:
-    (dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, test_slice) = PatchMaker(patch_size, window_size, nclasses, pid, datapath)
+    #rough segmentation
+    mask = SimpleITK.ReadImage(datapath + pid + '//' + pid + '-myo-cropped.mhd')
+    mask_3D = SimpleITK.GetArrayFromImage(mask) 
+    
+    (dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, test_slice) = PatchMaker(mask_3D, patch_size, window_size, nclasses, pid, datapath)
     (y_pred_scaled_cropped, y_testing_multi) = runCNNModel(dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, epocs, patch_size, window_size, nclasses, pid,test_slice)
+    #fine segmentation
+    modelname=('CNN_scar_2.h5')
+    patch_size = 2
+    window_size = 16
+    patchsize_sq = np.square(patch_size)
+    windowsize_sq = np.square(window_size)
+    mask3D = y_pred_scaled_cropped    
+    (dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, test_slice) = PatchMaker(mask_3D, patch_size, window_size, nclasses, pid, datapath)
+    (y_pred_scaled_cropped, y_testing_multi) = runCNNModel(dataset_training, dataset_testing, test_img_shape, test_img_shape_padded, pads, epocs, patch_size, window_size, nclasses, pid,test_slice)
+
     scarGT = SimpleITK.ReadImage(datapath + pid + '//' + pid + '-scar-cropped.mhd')
     scar3D = sitk.GetArrayFromImage(scarGT)
+    scar3D = scar3D[range(0,test_img_shape[0][0], skip),:,:]
     BW2 = np.array(y_pred_scaled_cropped)
     BW2=BW2/255# = y_pred_scaled_cropped
     BW1 = scar3D
     Dice = DiceIndex(BW1, BW2)
     Dice_list.append(Dice)
-    print('\nTraining Slices: %s Testing Slices: %s' %(train_slice, test_slice[pid_test.index(pid)]))
     print('\nDice for pid %s: %2.3f percent \n\n' %(pid, Dice))
      
 print(pid_test)
 print(Dice_list)
+print('\nmean Dice over %d training images: %2.3f percent \n\n' %(len(pid_test),np.mean(Dice_list)))

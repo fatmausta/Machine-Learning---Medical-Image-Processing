@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Thu Aug 17 15:39:19 2017
+
+@author: fusta
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Tue Aug  1 10:25:02 2017
 
 @author: fusta
@@ -30,19 +37,19 @@ from skimage.util import view_as_blocks
 import random
 
 patch_size = 8
-window_size = 30
+window_size = 32
 nclasses = 2
 epochs = 20
-all_slice = range(0,60,4)#15,5)#30,60,2)
+
 filter_size = 2
 datapopfraction = 0.80
-modelname= 'ModelMyoCNN1_aug.h5'
-pid = '0329'
-sl = 30
+modelname= 'CNN_scar_1.h5'
+#pid = '0329'
+#sl = 30
 #datapath = 'DataCNNScarNorm/' #for sharcnet work directory
 datapath = 'C:\\Users\\fusta\\Dropbox\\1_Machine_Learning\\DataCNNScarNorm\\'
-
-pid_train = np.array(['0329','0364','0417', '0424', '0450', '0473', '0493', '0494', '0495', '0515', '0519', '0529', '0546', '0562', '0565', '0574', '0578', '0587', '0591', '0601'])#, '0632', '0715', '0730', '0917', '0921', '0953', '1036', '1073', '1076', '1115', '1166', '1168', '1171', '1179'])
+skip=4
+pid_train = np.array(['0329','0364'])#,'0417', '0424', '0450', '0473', '0493', '0494', '0495', '0515', '0519', '0529', '0546', '0562', '0565', '0574', '0578', '0587', '0591', '0601'])#, '0632', '0715', '0730', '0917', '0921', '0953', '1036', '1073', '1076', '1115', '1166', '1168', '1171', '1179'])
 pid_test = np.array([('0485')])#for pid in pids:
 
 patchsize_sq = np.square(patch_size)
@@ -50,7 +57,7 @@ windowsize_sq = np.square(window_size)
 numpy.random.seed(windowsize_sq-1)
 test_slice = range(30,31)#15-45
 
-def PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slice, all_slice, datapath):  
+def PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slice, datapath, skip):  
     pid_all = np.concatenate((pid_train, pid_test))
     patch_labels_training=[]
     patch_labels_testing=[]    
@@ -66,12 +73,6 @@ def PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slic
         LGE = SimpleITK.ReadImage(datapath + pid + '//' + pid + '-LGE-cropped.mhd')
         scar = SimpleITK.ReadImage(datapath + pid + '//' + pid + '-scar-cropped.mhd')
         myo = SimpleITK.ReadImage(datapath + pid + '//' + pid + '-myo-cropped.mhd')
-        
-        
-#        LGE = SimpleITK.ReadImage(datapath + '0485//0485-LGE-cropped.mhd')
-#        scar = SimpleITK.ReadImage(datapath + '0485//0485-scar-cropped.mhd')
-#        myo = SimpleITK.ReadImage(datapath + '0485//0485-myo-cropped.mhd')
-
         
         #convert a SimpleITK object into an array
         LGE_3D = SimpleITK.GetArrayFromImage(LGE)
@@ -95,7 +96,9 @@ def PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slic
         len_samples = (h_LGE*w_LGE)/(patchsize_sq)
         datapopnumber=len_samples*datapopfraction
 
-        for sl in all_slice:
+        all_slice = range(0, d_LGE, skip)#15,5)#30,60,2)        for sl in all_slice:
+
+        for sl in all_slice:           
             if sl<d_LGE:
                 LGE_padded_slice=numpy.lib.pad(LGE_3D[sl,:,:], ((0,h_pad),(0,w_pad)), 'constant', constant_values=(0,0))
                 scar_padded_slice=numpy.lib.pad(scar_3D[sl,:,:], ((0,h_pad),(0,w_pad)), 'constant', constant_values=(0,0))  
@@ -116,8 +119,7 @@ def PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slic
                 rang=[]
        
                 #delete random samples to resuce the amount of data
-#                for each patches: 
-#                pop some patches and corresponding windows
+#                for each patches: pop some patches and corresponding windows
                 randomrange=random.sample(range(1, len(LGE_patches)), int(datapopnumber))
                 LGE_patches = np.delete(LGE_patches, randomrange, axis = 0) 
                 LGE_windows = np.delete(LGE_windows, randomrange, axis = 0) 
@@ -151,10 +153,6 @@ def PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slic
 
         training_data= list(zip(numpy.uint8(window_intensities_training),numpy.uint8(patch_labels_training)))
         testing_data= list(zip(numpy.uint8(window_intensities_testing),numpy.uint8(patch_labels_testing)))  
-        #pop and delete random patches from the list 
-#            =len(training_data)*datapopfraction
-#        for p in range(0, int(datapopnumber)):
-#            training_data.pop(random.randrange(len(training_data)))
         
     return training_data, testing_data, test_img_shape, pads, pid_all
     numpy.savetxt('training.csv', training_data ,fmt='%s', delimiter=',' ,newline='\r\n') 
@@ -210,8 +208,7 @@ def runCNNModel(dataset_training, dataset_testing, test_img_shape, pads, epochs,
 #    Y_training_scar = Y_training[np.where(Y_training>=1)] 
     
     multiply_data = int((len(X_training)/len(X_training_scar))/2)
-    
-    
+
     datagen = ImageDataGenerator(
         featurewise_center=True,
         featurewise_std_normalization=True,
@@ -219,7 +216,6 @@ def runCNNModel(dataset_training, dataset_testing, test_img_shape, pads, epochs,
         width_shift_range=0.2,
         height_shift_range=0.2,
         horizontal_flip=True)
-
 
     model = Sequential()
     model.add(Convolution2D(16, filter_size, filter_size, activation='relu', input_shape=(1,window_size,window_size), dim_ordering='th'))
@@ -231,22 +227,7 @@ def runCNNModel(dataset_training, dataset_testing, test_img_shape, pads, epochs,
     model.add(Dropout(0.5))
     model.add(Dense(nclasses, activation='softmax'))
     model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-    model.fit(X_training, Y_training, epochs=epochs, batch_size=100, shuffle=True, verbose = 2)
-#     
-#    Y_training = Y_training.argmax(1).astype('float32')
-#    #pick data only with label is not zero, patches which the label is not zero, data to be augmented
-
-#    Y_training = np_utils.to_categorical(Y_training, nclasses)
-#    Y_testing = np_utils.to_categorical(Y_testing, nclasses)
-
-    
-    # compute quantities required for featurewise normalization
-    # (std, mean, and principal components if ZCA whitening is applied)
-#    datagen.fit(X_training)
-#    
-#    # fits the model on batches with real-time data augmentation:
-#    model.fit_generator(datagen.flow(X_training, Y_training, batch_size=32),
-#                        steps_per_epoch=len(X_training) / 32, epochs=epochs)
+    model.fit(X_training, Y_training, epochs=epochs, batch_size=100, shuffle=True, verbose = 2)     
     model.summary()
 
     #save your model
@@ -254,9 +235,15 @@ def runCNNModel(dataset_training, dataset_testing, test_img_shape, pads, epochs,
     y_pred_scaled_cropped = []#.append(y_pred_scaled[p][:-pads[p+len(pid_train)][0],:-pads[p+len(pid_train)][1]])
     return y_pred_scaled_cropped
 
-##MAIN SECTION    
-##pid = '0485'
-##pids = ('0485', '0329')#,'0364', '0417', '0424', '0450', '0473', '0485', '0493', '0494', '0495', '0515', '0519', '0529', '0546', '0562', '0565', '0574', '0578', '0587', '0591', '0601', '0632', '0715', '0730', '0917', '0921', '0953', '1036', '1073', '1076', '1115', '1166', '1168', '1171', '1179')
-(dataset_training, dataset_testing, test_img_shape, pads, pid_all) = PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slice, all_slice, datapath)
+#to do a rough segmentation, save the ,model
+(dataset_training, dataset_testing, test_img_shape, pads, pid_all) = PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slice, datapath, skip)
 y_pred_scaled_cropped = runCNNModel(dataset_training, dataset_testing, test_img_shape, pads, epochs, patch_size, window_size, nclasses, pid_test, datapath)
-###read the GT as single slice for comparison
+#to do a finer segmentation, save the mpodel
+patch_size = 2
+window_size = 16
+patchsize_sq = np.square(patch_size)
+windowsize_sq = np.square(window_size)
+numpy.random.seed(windowsize_sq-1)
+modelname= 'CNN_scar_2.h5'
+(dataset_training, dataset_testing, test_img_shape, pads, pid_all) = PatchMaker(patch_size, window_size, nclasses, pid_train, pid_test, test_slice, datapath, skip)
+y_pred_scaled_cropped = runCNNModel(dataset_training, dataset_testing, test_img_shape, pads, epochs, patch_size, window_size, nclasses, pid_test, datapath)
